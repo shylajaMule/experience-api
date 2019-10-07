@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+	xmlns:db="http://www.mulesoft.org/schema/mule/db"
+	xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/db http://www.mulesoft.org/schema/mule/db/current/mule-db.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd">
+	
+	
+	<flow name="get-order-by-uriparam-flow" doc:id="07a6945e-4d0f-40b3-bcdf-acdaed838b9f" >
+		<set-variable value="#[attributes.headers]" doc:name="headers" doc:id="fbbdd184-a2d3-4570-b6c5-2e8ce69323a0" variableName="headers"/>
+		<set-variable value="#[attributes.uriParams.orderId]" doc:name="orderId" doc:id="099d1bc4-690b-484a-9b7b-87029fd67999" variableName="orderId"/>
+		<logger level="INFO" doc:name="Logger" doc:id="ae413ebb-a550-4ea9-8f1a-8a3985a868c3" message="#[output application/json
+---
+{
+	correlationId: vars.headers.'X-correlation-id',
+	sessionId: vars.headers.'X-session-id',
+	applicationName: app.name,
+	message: &quot;request order process api to get order details&quot;
+}]"/>
+		<http:request method="GET" doc:name="GET order Process api" doc:id="7dafa038-4782-48a5-a8e1-e7933b075b79" path="/${secure::processAPI.order.http.path}/{orderId}" config-ref="HTTP_Request_configuration">
+			<http:headers ><![CDATA[#[output applicaton/java
+---
+{
+	'X-correlation-id' : vars.headers.'X-correlation-id',
+	'X-session-id' : vars.headers.'X-session-id',
+	clientId : vars.headers.clientId,
+	clientSecretKey : vars.headers.clientSecretKey
+}]]]></http:headers>
+			<http:uri-params ><![CDATA[#[output applicaton/java
+---
+{
+	orderId : attributes.uriParams.'orderId'
+}]]]></http:uri-params>
+		</http:request>
+		<logger level="INFO" doc:name="Logger" doc:id="9a8fc74e-cc3e-4c72-9076-39558d7c83a9" message="#[output application/json
+---
+{
+	correlationId: vars.headers.'X-correlation-id',
+	sessionId: vars.headers.'X-session-id',
+	applicationName: app.name,
+	message: &quot;response recieved from process api&quot;
+}]"/>
+		<ee:transform doc:name="Transform Message" doc:id="b434c520-54a1-449b-9601-2be7d28d5997" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+ orderId: payload.orderId,
+ placementDate: payload.placementDate,
+ customerName: payload.customerName,
+ orderItems: payload.orderItems map (orderItems, index) -> {
+ 	 "orderItemId": orderItems.orderItemId,
+      "itemId": orderItems.itemId,
+      "itemCount": orderItems.itemCount,
+      "itemName": orderItems.itemName,
+      "itemCost": orderItems.itemCost
+ }
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	<error-handler ref="implimentationError_Handler" />
+	</flow>
+	<error-handler name="implimentationError_Handler" doc:id="bed0604d-e51b-4dac-97b6-18ffb1810059" >
+		<on-error-propagate enableNotifications="true" logException="true" doc:name="On Error Propagate" doc:id="a1fbfeaa-1cba-4c62-afc3-be47c3357c14" when="error.muleMessage.typedValue != null">
+			<set-variable value="#[error.muleMessage.typedValue.message]" doc:name="errorMessage" doc:id="2b79a657-625d-4671-96dd-ed5b3caa69fb" variableName="errorMessage"/>
+		</on-error-propagate>
+	</error-handler>
+</mule>

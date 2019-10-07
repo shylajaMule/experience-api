@@ -1,0 +1,11 @@
+http:
+ host: "0.0.0.0"
+ port: "8081"
+ path: "/api/*"
+ 
+processAPI:
+ order:
+  http:
+   host: "process-order-management-api.us-e2.cloudhub.io"
+   port: "80"
+   path: "api/orders"
